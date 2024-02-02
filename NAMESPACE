@@ -2,6 +2,7 @@
 
 export(calc_spike_scale)
 export(calc_spike_scale_ga4)
+export(calculate_geoLifts)
 export(calculate_uplifts)
 export(ga4_demographics)
 export(ga4_query)
@@ -13,4 +14,5 @@ export(get_ga_all)
 export(get_large_spots)
 export(get_large_spots_ga4)
 export(regionalise_ga)
+export(uplift_ga)
 export(use_quarto_ext)

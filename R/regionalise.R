@@ -44,6 +44,23 @@ regionalise_ga <- function(ga, test_region, control_region){
   results_regionalised
 }
 
+#' Title
+#'
+#' @param ga
+#' @param test_regions
+#' @param exclude_regions
+#' @param test_start
+#' @param test_end
+#' @param benchmark_advertiser
+#' @param benchmark_source
+#' @param benchmark_comment
+#' @param benchmark_schedule
+#' @param auto_regionalise
+#'
+#' @return
+#' @export
+#'
+#' @examples
 uplift_ga <- function(ga = NULL,
                       test_regions = NULL,
                       exclude_regions = NULL,
@@ -128,6 +145,21 @@ uplift_ga_carryover <- function(ga = NULL,
   list(campaign = during_campaign, two_weeks_post = two_weeks_post, four_weeks_post = four_weeks_post)
 }
 
+#' Title
+#'
+#' @param kpi_list
+#' @param test_regions
+#' @param exclude_regions
+#' @param test_start
+#' @param test_end
+#' @param benchmark_advertiser
+#' @param benchmark_comment
+#' @param benchmark_schedule
+#'
+#' @return
+#' @export
+#'
+#' @examples
 calculate_geoLifts <- function(kpi_list = NULL,
                                test_regions = NULL,
                                exclude_regions = NULL,
