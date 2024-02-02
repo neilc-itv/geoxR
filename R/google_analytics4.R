@@ -1,3 +1,16 @@
+#' Title
+#'
+#' @param ga_id
+#' @param date_min
+#' @param date_max
+#' @param filter_clause
+#' @param metric
+#' @param scale_to_national
+#'
+#' @return
+#' @export
+#'
+#' @examples
 ga4_query <- function(ga_id = NULL,
                      date_min = NULL,
                      date_max = NULL,
@@ -50,6 +63,19 @@ ga4_query <- function(ga_id = NULL,
   ga
 }
 
+#' Title
+#'
+#' @param ga_id
+#' @param date_min
+#' @param date_maxÏ
+#' @param filter_clause
+#' @param metric
+#' @param demographic_selected
+#'
+#' @return
+#' @export
+#'
+#' @examples
 ga4_demographics <- function(ga_id = NULL,
                       date_min = NULL,
                       date_max = NULL,

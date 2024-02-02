@@ -3,6 +3,8 @@
 export(calc_spike_scale)
 export(calc_spike_scale_ga4)
 export(calculate_uplifts)
+export(ga4_demographics)
+export(ga4_query)
 export(geoLift_plotly_att)
 export(geoLift_plotly_test_control)
 export(get_adjustment_factor)
