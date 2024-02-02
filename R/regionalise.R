@@ -19,8 +19,6 @@ regionalise_ga <- function(ga, test_region, control_region){
       dplyr::select(-city) |>
       dplyr::group_by(across(c(-sessions))) |>
       dplyr::summarise(sessions = sum(sessions, na.rm = TRUE)) |>
-      dplyr::filter(macro %in% test_region |
-                      macro %in% control_region) |>
       dplyr::rename(region = macro) |>
       dplyr::ungroup()
 
@@ -38,8 +36,6 @@ regionalise_ga <- function(ga, test_region, control_region){
       dplyr::select(-contains("geometry")) |>
       dplyr::group_by(across(c(-sessions))) |>
       dplyr::summarise(sessions = sum(sessions, na.rm = TRUE)) |>
-      dplyr::filter(ITV.Macro %in% test_region |
-               ITV.Macro %in% control_region) |>
       dplyr::rename(region = ITV.Macro) |>
       dplyr::ungroup()
 
@@ -48,95 +44,134 @@ regionalise_ga <- function(ga, test_region, control_region){
   results_regionalised
 }
 
-#' Roll up a GA lat-long dataset into test and control areas
-#'
-#' @param ga_regionalised
-#' @param test_region
-#' @param control_region
-#' @param pre_start
-#' @param pre_end
-#' @param test_start
-#'
-#' @return
-#' @export
-#'
-#' @examples
-assign_test_control <- function(ga_regionalised,
-                                test_region = NULL,
-                                control_region = NULL,
-                                pre_start = NULL,
-                                pre_end = NULL,
-                                test_start = NULL){
+uplift_ga <- function(ga = NULL,
+                      test_regions = NULL,
+                      exclude_regions = NULL,
+                      test_start = NULL,
+                      test_end = NULL,
+                      benchmark_advertiser = NA,
+                      benchmark_source = NA,
+                      benchmark_comment = NA,
+                      benchmark_schedule = NA,
+                      auto_regionalise = TRUE){
 
-  # Creates pre and post column and replaces region with test/control
+  if(auto_regionalise){
+    traffic_regional <- regionalise_ga(ga) |>
+      dplyr::filter(!region %in% exclude_regions)
+  } else {
+    traffic_regional <- ga |>
+      dplyr::filter(!region %in% exclude_regions)
+  }
 
-  results_regionalised_summary_sf <- ga_regionalised |>
-    dplyr::mutate(pre_test = ifelse(date >= pre_start & date <= pre_end, "pre_period",
-                             ifelse(date >= test_start, "test_period", ""))) |>
-    dplyr::filter(pre_test != "") |>
-    dplyr::mutate(region = ifelse(region %in% test_region, "test",
-                           ifelse(region %in% control_region, "control", ""))) |>
-    dplyr::filter(region != "") |>
-    dplyr::group_by(dplyr::across(c(-sessions))) |>
-    dplyr::summarise(sessions = sum(sessions, na.rm = TRUE))
+  test_start_n <- as.numeric(as.Date(test_start) - min(as.Date(ga$date))) + 1
+  test_end_n <- as.numeric(as.Date(test_end) - min(as.Date(ga$date))) + 1
+
+  traffic_geo <- GeoDataRead(data = traffic_regional,
+                                 date_id = "date",
+                                 location_id = "region",
+                                 Y_id = "sessions",
+                                 X = c(), #empty list as we have no covariates
+                                 format = "yyyy-mm-dd",
+                                 summary = TRUE)
+
+  traffic_geoLift <- GeoLift(Y_id = "Y",
+                                 data = traffic_geo,
+                                 locations = c(test_regions),
+                                 treatment_start_time = test_start_n,
+                                 treatment_end_time = test_end_n,
+                                 ConfidenceIntervals = TRUE)
+
+  traffic_geoLift$benchmark_advertiser <- benchmark_advertiser
+  traffic_geoLift$benchmark_source <- benchmark_source
+  traffic_geoLift$benchmark_comment <- benchmark_comment
+  traffic_geoLift$benchmark_schedule <- benchmark_schedule
+
+  traffic_geoLift
 }
 
+uplift_ga_carryover <- function(ga = NULL,
+                                test_regions = NULL,
+                                exclude_regions = NULL,
+                                campaign_start = NULL,
+                                campaign_end = NULL) {
 
-rebase_control <- function(ga_test_control){
+  max_date <- as.Date(max(ga$date))
 
-  # Add a date 'all' column if none exists
-  if(is.null(ga_test_control$date)) ga_test_control$date <- 'all'
+  during_campaign <- uplift_ga(
+    ga = ga,
+    test_regions = test_regions,
+    exclude_regions = exclude_regions,
+    test_start = campaign_start,
+    test_end = campaign_end
+  )$inference$Perc.Lift
 
-  # Rebases the control region to match test region size
-  ga_base_levels <- ga_test_control |>
-    dplyr::group_by(dplyr::across(c(-date, -sessions))) |>
-    dplyr::summarise(sessions = sum(sessions, na.rm = TRUE)) |>
-    dplyr::filter(pre_test=='pre_period') |>
-    tidyr::pivot_wider(names_from = region, values_from = sessions) |>
-    dplyr::mutate(adj_factor = test / control) |>
-    dplyr::select(-pre_test, -pre_test)
+  if(max_date >= as.Date(campaign_end)+14){
+    two_weeks_post <- uplift_ga(
+      ga = ga,
+      test_regions = test_regions,
+      exclude_regions = exclude_regions,
+      test_start = campaign_start,
+      test_end = as.Date(campaign_end) + 14
+    )$inference$Perc.Lift
+  } else two_weeks_post <- NA
 
-  ga_test_control_rebased <- ga_test_control |>
-    dplyr::left_join(ga_base_levels, by = "split") |>
-    dplyr::mutate(sessions_rebased = ifelse(region=="control", sessions * adj_factor,
-                                     sessions))
+  if(max_date >= as.Date(campaign_end)+28){
+    four_weeks_post <- uplift_ga(
+      ga = ga,
+      test_regions = test_regions,
+      exclude_regions = exclude_regions,
+      test_start = campaign_start,
+      test_end = as.Date(campaign_end) + 28
+    )$inference$Perc.Lift
+  } else four_weeks_post <- NA
 
-  ga_test_control_rebased
+  list(campaign = during_campaign, two_weeks_post = two_weeks_post, four_weeks_post = four_weeks_post)
 }
 
-#' Calculate an uplifts table from GA lat-long data
-#'
-#' @param ga
-#' @param test_region
-#' @param control_region
-#' @param pre_start
-#' @param pre_end
-#' @param test_start
-#'
-#' @return
-#' @export
-#'
-#' @examples
-calc_ga_uplifts <- function(ga,
-                            test_region = test_region,
-                            control_region = control_region,
-                            pre_start = pre_start,
-                            pre_end = pre_end,
-                            test_start = test_start) {
+calculate_geoLifts <- function(kpi_list = NULL,
+                               test_regions = NULL,
+                               exclude_regions = NULL,
+                               test_start = NULL,
+                               test_end = NULL,
+                               benchmark_advertiser = NA,
+                               benchmark_comment = NA,
+                               benchmark_schedule = NA){
 
-  ga |>
-    regionalise_ga(test_region, control_region) |>
-    assign_test_control(
-      test_region = test_region,
-      control_region = control_region,
-      pre_start = pre_start,
-      pre_end = pre_end,
-      test_start = test_start
-    ) |>
-    rebase_control() |>
-    dplyr::select(-sessions, -control, -test, -adj_factor) |>
-    tidyr::pivot_wider(names_from = region,
-                values_from = sessions_rebased)
+  geoLifts_out <- purrr::map(
+    .x = kpi_list,
+    .f = ~ uplift_ga(
+      .x,
+      test_regions = test_regions,
+      exclude_regions = exclude_regions,
+      test_start = test_start,
+      test_end = test_end,
+      benchmark_advertiser = benchmark_advertiser,
+      benchmark_source = "source",
+      benchmark_comment = benchmark_comment,
+      benchmark_schedule = benchmark_schedule
+    )
+  )
 
 }
 
+compare_demographics_ga <- function(ga = NULL,
+                      test_regions = NULL,
+                      exclude_regions = NULL){
+
+  regional <- regionalise_ga(ga) |>
+    dplyr::filter(!region %in% exclude_regions) |>
+    dplyr::mutate(test_control = ifelse(region %in% test_regions, "test", "control"))
+
+    changes <- regional |>
+      dplyr::group_by(test_control, pre_post, userAgeBracket) |>
+      summarise(sessions = sum(sessions)) |>
+      filter(userAgeBracket != "unknown") |>
+      dplyr::group_by(pre_post, test_control) |>
+      dplyr::mutate(sessions_pct = sessions / sum(sessions)) |>
+    dplyr::select(-sessions) |>
+    tidyr::pivot_wider(names_from = pre_post, values_from = sessions_pct) |>
+    dplyr::mutate(change = post / pre - 1) |>
+    dplyr::filter(test_control=="test")
+
+  changes
+}

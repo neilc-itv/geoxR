@@ -1,0 +1,278 @@
+---
+title: "GeoX Regional Test Results"
+output:
+  html_document:
+    df_print: paged
+    css: style.css
+  pdf_document: default
+---
+
+```{r, echo=FALSE}
+
+options(scipen = 999)
+
+htmltools::img(src = knitr::image_uri(file.path(getwd(), "ITV_logo.png")), 
+               alt = 'logo', 
+               style = 'position:absolute; top:0; right:0; padding:10px;',
+               width = '150px')
+
+```
+
+```{r setup, include=FALSE} 
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, error = FALSE, echo = FALSE, tidy = TRUE, tidy.opts = list(comment = FALSE), out.width = "100%") 
+
+library(geoxR)
+library(tidyverse)
+library(baRb)
+library(googleAnalyticsR)
+library(googleCloudStorageR)
+
+auth_json <- "/Users/neilchar/auth/mit-dev-362409-294cba723c92.json"
+
+gcs_auth(json_file = auth_json)
+ga_auth(json_file = auth_json)
+
+googleAnalyticsR::ga_account_list("ga4")
+
+
+title <- "Resi"
+
+pre_start <- '2023-04-01'
+pre_end <- '2023-04-15'
+test_start <- '2023-04-24'
+test_end <- '2023-05-09'
+
+test_region <- c("London",
+                  "Meridian")
+
+control_region = c(
+                  "Yorkshire",
+                  "Tyne Tees",
+                  "Anglia",
+                  "Westcountry",
+                  "Border",
+                  "Wales",
+                  "West",
+                  "Scotland"
+                  )
+
+brand_term <- NULL
+
+conversion_goal <- NULL
+
+ga_id <- 185133054
+
+barb_advertiser <- list("resi_design_limited")
+
+exclude_sales_houses <- NA
+
+use_cache <- TRUE
+
+```
+
+#### `r title`
+
+#### Campaign beginning `r test_start`
+
+
+## Account Details
+
+```{r}
+
+  googleAnalyticsR::ga_auth(email = "neil.charles@itv.com")
+
+  accounts <- googleAnalyticsR::ga_account_list()
+
+  account_confirmation <- accounts |> 
+    dplyr::filter(viewId==ga_id) |> 
+    dplyr::select(accountName, viewName, viewId)
+
+  knitr::kable(account_confirmation)
+
+```
+
+```{r}  
+  spots <- map(
+    barb_advertiser, .f = ~baRb::barb_get_spots(pre_start, test_end, .x) 
+  ) |> 
+  list_rbind() |> 
+  filter(!sales_house_name %in% exclude_sales_houses)
+
+  googleAnalyticsR::ga_auth(email = "neil.charles@itv.com")
+
+  if(!use_cache){
+    ga <- get_ga_all(ga_id,
+                     pre_start,
+                     test_end,
+                     brand_term = brand_term,
+                     conversion_goal = conversion_goal)
+  
+    write_rds(ga, "ga.rds")
+  }
+
+  ga <- read_rds("ga.rds")
+  
+  ga$granular$results_minute$hour <- as.numeric(ga$granular$results_minute$hour) + 1
+
+  adjustment_factor <- get_adjustment_factor(ga$granular$results_minute, spots, test_region, control_region)
+
+  results <- purrr::map(
+    ga$aggregated,
+    .f = ~
+      calculate_uplifts(.,
+                            test_region = test_region,
+                            control_region = control_region,
+                            pre_start = pre_start,
+                            pre_end = pre_end,
+                            test_start = test_start,
+                            adjust_for_bleed_into_control = TRUE,
+                            adjustment_factor$spike_scale
+  ))
+
+```
+
+### Background
+
+Test region(s): `r test_region`
+
+Control region(s): `r control_region`
+
+Brand Search Term Contains: "`r brand_term`"
+
+Conversion Goal: `r conversion_goal`
+
+Test start date: `r test_start`
+
+Pre-test period: `r pre_start` to `r pre_end`
+
+---
+
+Report run date: `r lubridate::today()`
+
+---
+
+\newpage
+
+### Minute-level Spot Uplifts
+
+Test region average response following broadcast of the ten largest spots in the schedule.
+
+```{r}
+  adjustment_factor$spike_scale_test$spike_plot
+```
+
+### Spots Included in Spike Calculation
+
+```{r}
+
+large_spots_10 <- spots |> 
+  mutate(hour = lubridate::hour(standard_datetime),
+         minute = lubridate::hour(standard_datetime)) |>
+  top_n(10, all_adults)
+
+knitr::kable(
+  large_spots_10 |> 
+  select(preceding_programme_name, standard_datetime, all_adults) |> 
+  mutate(all_adults = all_adults * 100) |> 
+  rename(programme = preceding_programme_name,
+         time = standard_datetime,
+         `adult impacts` = all_adults)
+)
+```
+
+\newpage
+
+# All Traffic
+
+### Total Traffic Uplift
+
+Comparison of test and control regions.
+
+Uplift % = `r results$results_total$summary$uplift_pct`
+
+```{r}
+results$results_total$plot
+```
+
+
+### All Traffic Uplift vs. Impacts
+
+```{r}
+
+impacts = spots |> 
+  mutate(date = lubridate::floor_date(as_datetime(standard_datetime), 'day')) |> 
+  group_by(date) |> 
+  summarise(Impacts = sum(all_adults, na.rm = TRUE))
+
+results$results_total$time_series |> 
+  mutate(difference = test - control) |> 
+    plotly::plot_ly() |> 
+    plotly::add_lines(x = ~date, y = ~difference,
+              mode = "lines",
+              name = "Test Uplift vs. Control",
+              line = list(color = '#535353', width = 1)) |> 
+      plotly::layout(xaxis = list(title = "Date"), yaxis = list(title = "Sessions")) |> 
+  plotly::add_bars(data = impacts,
+           x = ~date,
+           y = ~Impacts,
+           yaxis = "y2",
+           name = "Adult Impacts",
+           marker = list(color = '#535353')) |> 
+  plotly::layout(
+    yaxis = list(title = "Uplift"),
+    yaxis2 = list(title = "Impacts", overlaying = "y", side = "right"))
+
+```
+
+\newpage
+
+# Search Traffic
+
+### Organic Search Traffic Uplift
+
+Uplift % = `r results$results_organic$summary$uplift_pct`
+
+```{r}
+results$results_organic$plot
+```
+
+### Paid Search Traffic Uplift
+
+Uplift % = `r results$results_cpc$summary$uplift_pct`
+
+```{r}
+results$results_cpc$plot
+```
+
+\newpage
+
+# Paid Search Brand and Generic Terms
+
+### Paid Search - Brand Traffic Uplift
+
+Uplift % = `r results$results_cpc_brand$summary$uplift_pct`
+
+```{r}
+results$results_cpc_brand$plot
+```
+
+
+### Paid Search - Generic Traffic Uplift
+
+Uplift % = `r results$results_cpc_generic$summary$uplift_pct`
+
+```{r}
+results$results_cpc_generic$plot
+```
+
+\newpage
+
+# Conversion
+
+### Goal Conversions Uplift
+
+Uplift % = `r results$results_conversion$summary$uplift_pct`
+
+```{r}
+results$results_conversion$plot
+```

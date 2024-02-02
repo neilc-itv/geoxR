@@ -1,0 +1,283 @@
+---
+title: "Wentworth Puzzles"
+subtitle: "GeoX Regional Test Results"
+date-format: "DD-MM-YYYY"
+description: "ITV Measurement Innovation"
+title-block-banner: url(itv_background_crop.jpg)
+title-block-banner-color: white
+date: "Report Last Run: `r Sys.time()`"
+mainfont: Verdana
+sansfont: Georgia
+format: 
+  html:
+    grid: 
+      body-width: 1200px
+    embed-resources: true
+    smooth-scroll: true
+    theme: cosmo
+    fontcolor: black
+    toc: true
+    toc-location: left
+    toc-title: Summary
+    toc-depth: 4
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(geoxR)
+library(GeoLift)
+library(tidyverse)
+library(baRb)
+library(googleAnalyticsR)
+library(googleCloudStorageR)
+devtools::load_all(".")
+
+ga_id <- 326644194
+
+barb_name <- c("WENTWORTH_WOODEN_JIG")
+
+report_title <- "Wentworth Puzzles"
+
+data_start <- '2023-10-01'
+data_end <- '2023-12-11'
+test_start <- '2023-11-13'
+test_end <- '2023-12-03'
+
+test_regions <- "Westcountry"
+
+exclude_regions <- c("Ulster", "Meridian")
+
+# test_start_n <- as.numeric(as.Date(test_start) - as.Date(data_start))
+# data_end_n <- as.numeric(as.Date(data_end) - as.Date(data_start))
+
+```
+## Report Setup
+
+Test start date: `r test_start`
+
+Test end date: `r test_end`
+
+Data end date: `r data_end`
+
+Test region(s): `r test_regions`
+
+## Campaign Summary
+
+```{r spots}
+#| layout-ncol: 2
+
+spots <- baRb::barb_get_spots(data_start, data_end, barb_name, metric = "tvrs")
+spots_impacts <- baRb::barb_get_spots(data_start, data_end, barb_name)
+
+write_rds(spots, "spots.rds")
+write_rds(spots_impacts, "spots_impacts.rds")
+
+spots <- read_rds("spots.rds")
+spots_impacts <- read_rds("spots_impacts.rds")
+
+
+spots_rollup <- spots_impacts |>
+  dplyr::mutate(date = lubridate::floor_date(as_datetime(standard_datetime), "day")) |>
+  dplyr::group_by(date, panel_region) |>
+  dplyr::summarise(impacts = sum(all_adults)) |>
+  dplyr::ungroup()
+
+spots_rollup |>
+  plotly::plot_ly(colors = as.character(itvPalette::itv_palette()[1:7])) |>
+    plotly::add_bars(x = ~date, y = ~impacts, color = ~panel_region) |>
+    plotly::layout(barmode = 'stack',
+                   legend = list(x = 0, y = 100))
+
+spots |>
+  dplyr::group_by(panel_region) |>
+  filter(stringr::str_detect(station_name, "ITV1")) |>
+  summarise(all_adults = round(sum(all_adults), 0)) |>
+  gt::gt() |>
+    gt::cols_label(panel_region = "Region",
+                   all_adults = "Adult TVR's") |>
+    gtExtras::gt_theme_538()
+
+
+```
+
+```{r data_load, include=FALSE}
+
+# Get Traffic
+# all_traffic <- ga4_query(ga_id, data_start, data_end) |>
+#   write_rds("all_traffic.RDS")
+# 
+# cpc_traffic <-
+#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
+#   write_rds("cpc_traffic.RDS")
+# 
+# organic_traffic <-
+#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Organic Search")) |>
+#   write_rds("organic_traffic.RDS")
+# 
+# paid_social_traffic <-
+#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Social")) |>
+#   write_rds("paid_social_traffic.RDS")
+# 
+# direct_traffic <-
+#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Direct")) |>
+#   write_rds("direct_traffic.RDS")
+# 
+age_traffic_pre <-
+  ga4_demographics(ga_id, data_start, as.character(as.Date(test_start) -1), filter_clause = ga4_filter_uk()) |>
+  mutate(pre_post = "pre")
+
+age_traffic_post <-
+  ga4_demographics(ga_id, test_start, test_end, filter_clause = ga4_filter_uk()) |>
+  mutate(pre_post = "post")
+
+age_traffic <- age_traffic_pre |>
+  union_all(age_traffic_post) |>
+  write_rds("age_traffic.RDS")
+
+gender_traffic_pre <-
+  ga4_demographics(ga_id, data_start, as.character(as.Date(test_start) -1), filter_clause = ga4_filter_uk(), demographic_selected = "userGender") |>
+  mutate(pre_post = "pre")
+
+gender_traffic_post <-
+  ga4_demographics(ga_id, test_start, test_end, filter_clause = ga4_filter_uk(), demographic_selected = "userGender") |>
+  mutate(pre_post = "post")
+
+gender <- demographic_traffic_pre |>
+  union_all(demographic_traffic_post) |>
+  write_rds("demographic_traffic.RDS")
+
+
+# Load from cache
+all_traffic <- read_rds("all_traffic.RDS")
+# cpc_traffic <- read_rds("cpc_traffic.RDS")
+organic_traffic <- read_rds("organic_traffic.RDS")
+paid_social_traffic <- read_rds("paid_social_traffic.RDS")
+direct_traffic <- read_rds("direct_traffic.RDS")
+demographic_traffic <- read_rds('demographic_traffic.RDS')
+
+# Calculate Geolifts for all sources
+geolifts <- calculate_geoLifts(
+  list("all_traffic" = all_traffic,
+       # "cpc_traffic" = cpc_traffic,
+       "organic_traffic" = organic_traffic,
+       "paid_social_traffic" = paid_social_traffic,
+       "direct_traffic" = direct_traffic),
+  test_regions = test_regions,
+  exclude_regions = exclude_regions,
+  test_start = test_start,
+  test_end = test_end,
+  benchmark_advertiser = "Wentworth Puzzles",
+  benchmark_comment = "First geo test, westcountry and Meridian",
+  benchmark_schedule = spots_rollup
+) |> 
+  write_rds('geox.rds')
+
+all_traffic_carryover <-
+  uplift_ga_carryover(all_traffic,
+            test_regions,
+            campaign_start = test_start,
+            campaign_end = test_end)
+
+```
+
+## All Web Traffic
+
+Uplift: `r geolifts$all_traffic$inference$Perc.Lift`%
+
+Probability uplift is zero: `r geolifts$all_traffic$summary$average_att$p_val`%
+
+Synthetic control improvement over naive model: `r round((1 - geolifts$all_traffic$summary$scaled_l2_imbalance)*100, 0)`%
+
+```{r}
+#| layout-ncol: 2
+
+geoLift_plotly_test_control(geolifts$all_traffic, data_start, test_start, "All Traffic")
+geoLift_plotly_att(geolifts$all_traffic, data_start, test_start, "All Traffic")
+
+```
+
+\newpage
+
+## Paid Social Traffic
+
+Uplift: `r geolifts$paid_social$inference$Perc.Lift`%
+
+Probability uplift is zero: `r geolifts$paid_social$summary$average_att$p_val`%
+
+Synthetic control improvement over naive model: `r round((1 - geolifts$paid_social$summary$scaled_l2_imbalance)*100, 0)`%
+
+
+```{r}
+#| layout-ncol: 2
+
+geoLift_plotly_test_control(geolifts$paid_social_traffic, data_start, test_start, "Paid Social")
+geoLift_plotly_att(geolifts$paid_social_traffic, data_start, test_start, "Paid Social")
+
+```
+
+\newpage
+
+## Organic Traffic
+
+Uplift: `r geolifts$organic$inference$Perc.Lift`%
+
+Probability uplift is zero: `r geolifts$organic$summary$average_att$p_val`%
+
+Synthetic control improvement over naive model: `r round((1 - geolifts$organic$summary$scaled_l2_imbalance)*100, 0)`%
+
+
+
+```{r}
+#| layout-ncol: 2
+
+geoLift_plotly_test_control(geolifts$organic_traffic, data_start, test_start, "Organic Search")
+geoLift_plotly_att(geolifts$organic_traffic, data_start, test_start, "Organic Search")
+
+```
+
+\newpage
+
+## Direct Traffic
+
+Uplift: `r geolifts$direct$inference$Perc.Lift`%
+
+Probability uplift is zero: `r geolifts$direct$summary$average_att$p_val`%
+
+Synthetic control improvement over naive model: `r round((1 - geolifts$direct$summary$scaled_l2_imbalance)*100, 0)`%
+
+
+```{r}
+#| layout-ncol: 2
+
+geoLift_plotly_test_control(geolifts$direct_traffic, data_start, test_start, "Direct")
+geoLift_plotly_att(geolifts$direct_traffic, data_start, test_start, "Direct")
+
+```
+
+\newpaage
+
+## Demographics
+
+```{r}
+
+demographic_traffic |> 
+  compare_demographics_ga(test_regions = test_regions, exclude_regions = exclude_regions) |> 
+  plotly::plot_ly(colors = as.character(itvPalette::itv_palette()[1:7])) |> 
+    plotly::add_trace(y = ~userAgeBracket, x = ~change, type = 'bar', orientation = 'h')
+
+```
+
+
+\newpaage
+
+## Appendix
+
+### Weights to form synthetic control
+
+```{r}
+gt::gt(geolifts$all_traffic$df_weights |> 
+         dplyr::mutate(weight = round(weight, 2)) |> 
+         dplyr::arrange(-weight)) |>
+  gtExtras::gt_theme_538()
+```

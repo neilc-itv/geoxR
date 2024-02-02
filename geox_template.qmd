@@ -1,0 +1,69 @@
+---
+title: "geox_template"
+format:
+  html:
+    theme: litera
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+
+library(tidyverse)
+library(googleCloudStorageR)
+library(googleAnalyticsR)
+
+# Settings
+project_name <- "testing"
+auth_json <- "/Users/neilchar/auth/mit-dev-362409-294cba723c92.json"
+cloud_bucket <- "itv_geox_data"
+
+cloud_folder <- glue::glue("{cloud_bucket}/{project_name}")
+
+gcs_auth(json_file = auth_json)
+
+file <- "city_macro_lookup.rda"
+
+gcs_upload_data_dir <- function(data_dir = "data", cloud_bucket = NULL, project_name = NULL){
+  
+  list.files(data_dir) |> 
+    purrr::walk(.f = 
+      ~gcs_upload(
+        file = glue::glue("{data_dir}/{.}"),
+        name = glue::glue("{project_name}/{.}"),
+        bucket = cloud_bucket,
+        predefinedAcl = "bucketLevel"
+      )
+    )
+}
+
+```
+
+```{r}
+auth_json <- "/Users/neilchar/auth/mit-dev-362409-294cba723c92.json"
+
+gcs_auth(json_file = auth_json)
+ga_auth(json_file = auth_json)
+
+acs <- googleAnalyticsR::ga_account_list("ga4")
+
+```
+
+```{r}
+
+test <- ga4_query(
+  250077845, '2023-04-01', '2023-04-15',
+  ga4_filter_medium("cpc")
+  )
+
+
+```
+
+The `echo: false` option disables the printing of code (only output is displayed).
