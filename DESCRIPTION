@@ -20,6 +20,7 @@ Imports:
   lubridate,
   plotly,
   purrr,
-  readr
+  readr,
+  GeoLift
 Depends: 
     R (>= 2.10)

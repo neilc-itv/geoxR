@@ -83,7 +83,7 @@ uplift_ga <- function(ga = NULL,
   test_start_n <- as.numeric(as.Date(test_start) - min(as.Date(ga$date))) + 1
   test_end_n <- as.numeric(as.Date(test_end) - min(as.Date(ga$date))) + 1
 
-  traffic_geo <- GeoDataRead(data = traffic_regional,
+  traffic_geo <- GeoLift::GeoDataRead(data = traffic_regional,
                                  date_id = "date",
                                  location_id = "region",
                                  Y_id = "sessions",
@@ -91,7 +91,7 @@ uplift_ga <- function(ga = NULL,
                                  format = "yyyy-mm-dd",
                                  summary = TRUE)
 
-  traffic_geoLift <- GeoLift(Y_id = "Y",
+  traffic_geoLift <- GeoLift::GeoLift(Y_id = "Y",
                                  data = traffic_geo,
                                  locations = c(test_regions),
                                  treatment_start_time = test_start_n,
