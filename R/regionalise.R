@@ -8,23 +8,40 @@
 #' @export
 #'
 #' @examples
-regionalise_ga <- function(ga, test_region, control_region){
+regionalise_ga <- function(ga, test_region, control_region, micro = FALSE){
 
   if(any(names(ga)=="city")){
     # Data is GA city names
 
+    city_lookup <- city_macro_lookup
+
+    if(micro){
+      city_lookup$region = city_lookup$micro
+    } else {
+      city_lookup$region = city_lookup$macro
+    }
+
     results_regionalised <- ga |>
-      dplyr::left_join(dplyr::select(city_macro_lookup, city, macro), by = "city") |>
+      dplyr::left_join(dplyr::select(city_lookup, city, macro), by = "city") |>
       tidyr::drop_na() |>
       dplyr::select(-city) |>
       dplyr::group_by(across(c(-sessions))) |>
       dplyr::summarise(sessions = sum(sessions, na.rm = TRUE)) |>
-      dplyr::rename(region = macro) |>
       dplyr::ungroup()
 
   } else {
 
     # Assume data is lat longs
+
+    if(micro){
+      region_shp <- micro_regions
+      region_shp$region <- ITV_Micro
+    } else {
+      region_shp <- macro_regions
+      region_shp$region <- ITV.Macro
+    }
+
+
     results_sf <- ga |>
       sf::st_as_sf(coords = c("longitude", "latitude"),
                crs = 4326, agr = "constant")
@@ -36,7 +53,6 @@ regionalise_ga <- function(ga, test_region, control_region){
       dplyr::select(-contains("geometry")) |>
       dplyr::group_by(across(c(-sessions))) |>
       dplyr::summarise(sessions = sum(sessions, na.rm = TRUE)) |>
-      dplyr::rename(region = ITV.Macro) |>
       dplyr::ungroup()
 
   }
@@ -78,6 +94,15 @@ uplift_ga <- function(ga = NULL,
   } else {
     traffic_regional <- ga |>
       dplyr::filter(!region %in% exclude_regions)
+  }
+
+  #Check region names for test and exclusion are valid
+  if(!any(test_regions) %in% ga$region){
+    stop('You have specified a test region that is not present in the data')
+  }
+
+  if(!any(exclude_regions) %in% ga$region){
+    stop('You have an excluded region that is not present in the data')
   }
 
   test_start_n <- as.numeric(as.Date(test_start) - min(as.Date(ga$date))) + 1

@@ -1,5 +1,5 @@
 ---
-title: "Wentworth Puzzles"
+title: "GEOX REPORT TEMPLATE - CLIENT NAME HERE"
 subtitle: "GeoX Regional Test Results"
 date-format: "DD-MM-YYYY"
 description: "ITV Measurement Innovation"
@@ -24,6 +24,9 @@ format:
 
 ```{r setup, include=FALSE}
 
+# ******************************************************************************
+# Initial libraries load and setup
+# ******************************************************************************
 knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 library(geoxR)
 library(GeoLift)
@@ -32,24 +35,44 @@ library(baRb)
 library(googleAnalyticsR)
 library(googleCloudStorageR)
 devtools::load_all(".")
+options(scipen = 999)
 
+# Google Analytics 4 ID. Get this from the API or it's the number after web/#/p in the analytics.google.com URL
 ga_id <- 326644194
 
+# BARB API name for the advertiser. You can get all available names with baRb::barb_get_spots()
 barb_name <- c("WENTWORTH_WOODEN_JIG")
 
+# Title for the output report doc
 report_title <- "Wentworth Puzzles"
 
+# ******************************************************************************
+# Test date parameters
+# ******************************************************************************
+
+# Start date should usually be 56 days before test start but may need to be flexed to get a better model fit
 data_start <- '2023-10-01'
-data_end <- '2023-12-11'
+
+# End date for data that will be extracted from the analytics API
+data_end <- '2024-01-06'
+
+# First day of TV in the campaign
 test_start <- '2023-11-13'
-test_end <- '2023-12-03'
 
-test_regions <- "Westcountry"
+# Last day of TV in the campaign
+test_end <- '2023-12-31'
 
-exclude_regions <- c("Ulster", "Meridian")
+# One or more region names where TV has been run
+test_regions <- c("Meridian")
 
-# test_start_n <- as.numeric(as.Date(test_start) - as.Date(data_start))
-# data_end_n <- as.numeric(as.Date(data_end) - as.Date(data_start))
+# Regions to exclude from the analysis.
+# Usually either because they cause model problems, or you're isolating one region's TV uplift and need to exclude other regions where TV ran.
+exclude_regions <- c("Ulster", "Westcountry")
+
+# Calculated campaign carryover windows (do not amend - used for benchmarking)
+post_14 <- test_end + 14
+post_28 <- test_end + 28
+post_56 <- test_end + 56
 
 ```
 ## Report Setup
@@ -62,21 +85,31 @@ Data end date: `r data_end`
 
 Test region(s): `r test_regions`
 
+\newpage
+
 ## Campaign Summary
 
 ```{r spots}
 #| layout-ncol: 2
 
-spots <- baRb::barb_get_spots(data_start, data_end, barb_name, metric = "tvrs")
-spots_impacts <- baRb::barb_get_spots(data_start, data_end, barb_name)
+# ******************************************************************************
+# Retrieve spot impact data. Can be commented out to cache data locally for speed.
+# ******************************************************************************
+# spots <- baRb::barb_get_spots(data_start, data_end, barb_name, metric = "tvrs")
+# spots_impacts <- baRb::barb_get_spots(data_start, data_end, barb_name)
+# 
+# write_rds(spots, "spots.rds")
+# write_rds(spots_impacts, "spots_impacts.rds")
 
-write_rds(spots, "spots.rds")
-write_rds(spots_impacts, "spots_impacts.rds")
-
+# ******************************************************************************
+# Load spot impact data from local cache
+# ******************************************************************************
 spots <- read_rds("spots.rds")
 spots_impacts <- read_rds("spots_impacts.rds")
 
-
+# ******************************************************************************
+# Roll up spots and draw charts. Not normally amended.
+# ******************************************************************************
 spots_rollup <- spots_impacts |>
   dplyr::mutate(date = lubridate::floor_date(as_datetime(standard_datetime), "day")) |>
   dplyr::group_by(date, panel_region) |>
@@ -103,60 +136,46 @@ spots |>
 
 ```{r data_load, include=FALSE}
 
-# Get Traffic
-# all_traffic <- ga4_query(ga_id, data_start, data_end) |>
-#   write_rds("all_traffic.RDS")
+# ******************************************************************************
+# Get traffic data
+# ******************************************************************************
+# You can pull any sources of traffic that you need. Use a code block like this:
+# paid_search <- ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
+#   write_rds("paid_search.RDS")
 # 
-# cpc_traffic <-
-#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
-#   write_rds("cpc_traffic.RDS")
-# 
-# organic_traffic <-
-#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Organic Search")) |>
-#   write_rds("organic_traffic.RDS")
-# 
-# paid_social_traffic <-
-#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Social")) |>
-#   write_rds("paid_social_traffic.RDS")
-# 
-# direct_traffic <-
-#   ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Direct")) |>
-#   write_rds("direct_traffic.RDS")
-# 
-age_traffic_pre <-
-  ga4_demographics(ga_id, data_start, as.character(as.Date(test_start) -1), filter_clause = ga4_filter_uk()) |>
-  mutate(pre_post = "pre")
+# Each block writes a file to the local cache so you can comment out the following lines for speed if you don't need to refresh data.
+# ******************************************************************************
+all_traffic <- ga4_query(ga_id, data_start, data_end) |>
+  write_rds("all_traffic.RDS")
 
-age_traffic_post <-
-  ga4_demographics(ga_id, test_start, test_end, filter_clause = ga4_filter_uk()) |>
-  mutate(pre_post = "post")
+cpc_traffic <-
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
+  write_rds("cpc_traffic.RDS")
 
-age_traffic <- age_traffic_pre |>
-  union_all(age_traffic_post) |>
-  write_rds("age_traffic.RDS")
+organic_traffic <-
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Organic Search")) |>
+  write_rds("organic_traffic.RDS")
 
-gender_traffic_pre <-
-  ga4_demographics(ga_id, data_start, as.character(as.Date(test_start) -1), filter_clause = ga4_filter_uk(), demographic_selected = "userGender") |>
-  mutate(pre_post = "pre")
+paid_social_traffic <-
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Social")) |>
+  write_rds("paid_social_traffic.RDS")
 
-gender_traffic_post <-
-  ga4_demographics(ga_id, test_start, test_end, filter_clause = ga4_filter_uk(), demographic_selected = "userGender") |>
-  mutate(pre_post = "post")
+direct_traffic <-
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Direct")) |>
+  write_rds("direct_traffic.RDS")
 
-gender <- demographic_traffic_pre |>
-  union_all(demographic_traffic_post) |>
-  write_rds("demographic_traffic.RDS")
-
-
-# Load from cache
+# ******************************************************************************
+# Load traffic data from local cache
+# ******************************************************************************
 all_traffic <- read_rds("all_traffic.RDS")
-# cpc_traffic <- read_rds("cpc_traffic.RDS")
+cpc_traffic <- read_rds("cpc_traffic.RDS")
 organic_traffic <- read_rds("organic_traffic.RDS")
 paid_social_traffic <- read_rds("paid_social_traffic.RDS")
 direct_traffic <- read_rds("direct_traffic.RDS")
-demographic_traffic <- read_rds('demographic_traffic.RDS')
 
-# Calculate Geolifts for all sources
+# ******************************************************************************
+# Calculate geolifts for all sources. Add or remove sources from the list() to include or exclude from uplift calculations.
+# ******************************************************************************
 geolifts <- calculate_geoLifts(
   list("all_traffic" = all_traffic,
        # "cpc_traffic" = cpc_traffic,
@@ -173,25 +192,55 @@ geolifts <- calculate_geoLifts(
 ) |> 
   write_rds('geox.rds')
 
-all_traffic_carryover <-
-  uplift_ga_carryover(all_traffic,
-            test_regions,
-            campaign_start = test_start,
-            campaign_end = test_end)
+```
+
+```{r}
+# Steps to handle postcode data
+
+# orders <- read_csv("YOUR POSTCODE ORDERS CSV") |> 
+#   janitor::clean_names() |> 
+#   mutate(post_sector = substr(postal_code, 1, nchar(postal_code) -2)) |> # Calculate a post sector field if necessary
+#   left_join(sector_macro_lookup, by = "post_sector") |>  # Join orders to regions
+#   group_by(order_date, macro) |> 
+#   summarise(total_value = sum(order_total)) |> # Summarise orders to regions
+#   rename(region = macro,
+#          date = order_date,
+#          sessions = total_value) # Tidy up. KPI var to be modelled MUST be named 'sessions'.
+# 
+# # Run geolift on the orders data table without regionalising because you've already done that bit manually
+# geolift_value <- uplift_ga(
+#   orders,
+#   test_regions = test_regions,
+#   exclude_regions = exclude_regions,
+#   test_start = test_start,
+#   test_end = test_end,
+#   benchmark_advertiser = "ADVERTISER NAME",
+#   benchmark_comment = "COMMENT",
+#   benchmark_schedule = spots_rollup,
+#   auto_regionalise = FALSE
+# )
+
+# Any file can be processed in this way. As long as it has `date`, `region` & `sessions` columns, geoxR can run it.
+
 
 ```
+
+\newpage
 
 ## All Web Traffic
 
 Uplift: `r geolifts$all_traffic$inference$Perc.Lift`%
 
-Probability uplift is zero: `r geolifts$all_traffic$summary$average_att$p_val`%
+Confidence in measure: `r round((1-geolifts$all_traffic$summary$average_att$p_val)*100)`%
 
 Synthetic control improvement over naive model: `r round((1 - geolifts$all_traffic$summary$scaled_l2_imbalance)*100, 0)`%
 
 ```{r}
 #| layout-ncol: 2
 
+# ******************************************************************************
+# Output charts for a geolift calculation
+# ******************************************************************************
 geoLift_plotly_test_control(geolifts$all_traffic, data_start, test_start, "All Traffic")
 geoLift_plotly_att(geolifts$all_traffic, data_start, test_start, "All Traffic")
 
@@ -203,7 +252,7 @@ geoLift_plotly_att(geolifts$all_traffic, data_start, test_start, "All Traffic")
 
 Uplift: `r geolifts$paid_social$inference$Perc.Lift`%
 
-Probability uplift is zero: `r geolifts$paid_social$summary$average_att$p_val`%
+Confidence in measure: `r round((1-geolifts$paid_social$summary$average_att$p_val)*100)`%
 
 Synthetic control improvement over naive model: `r round((1 - geolifts$paid_social$summary$scaled_l2_imbalance)*100, 0)`%
 
@@ -211,6 +260,9 @@ Synthetic control improvement over naive model: `r round((1 - geolifts$paid_soci
 ```{r}
 #| layout-ncol: 2
 
+# ******************************************************************************
+# Output charts for a geolift calculation
+# ******************************************************************************
 geoLift_plotly_test_control(geolifts$paid_social_traffic, data_start, test_start, "Paid Social")
 geoLift_plotly_att(geolifts$paid_social_traffic, data_start, test_start, "Paid Social")
 
@@ -222,7 +274,7 @@ geoLift_plotly_att(geolifts$paid_social_traffic, data_start, test_start, "Paid S
 
 Uplift: `r geolifts$organic$inference$Perc.Lift`%
 
-Probability uplift is zero: `r geolifts$organic$summary$average_att$p_val`%
+Confidence in measure: `r round((1-geolifts$organic$summary$average_att$p_val)*100)`%
 
 Synthetic control improvement over naive model: `r round((1 - geolifts$organic$summary$scaled_l2_imbalance)*100, 0)`%
 
@@ -231,6 +283,9 @@ Synthetic control improvement over naive model: `r round((1 - geolifts$organic$s
 ```{r}
 #| layout-ncol: 2
 
+# ******************************************************************************
+# Output charts for a geolift calculation
+# ******************************************************************************
 geoLift_plotly_test_control(geolifts$organic_traffic, data_start, test_start, "Organic Search")
 geoLift_plotly_att(geolifts$organic_traffic, data_start, test_start, "Organic Search")
 
@@ -242,7 +297,7 @@ geoLift_plotly_att(geolifts$organic_traffic, data_start, test_start, "Organic Se
 
 Uplift: `r geolifts$direct$inference$Perc.Lift`%
 
-Probability uplift is zero: `r geolifts$direct$summary$average_att$p_val`%
+Confidence in measure: `r round((1-geolifts$direct$summary$average_att$p_val)*100)`%
 
 Synthetic control improvement over naive model: `r round((1 - geolifts$direct$summary$scaled_l2_imbalance)*100, 0)`%
 
@@ -250,34 +305,10 @@ Synthetic control improvement over naive model: `r round((1 - geolifts$direct$su
 ```{r}
 #| layout-ncol: 2
 
+# ******************************************************************************
+# Output charts for a geolift calculation
+# ******************************************************************************
 geoLift_plotly_test_control(geolifts$direct_traffic, data_start, test_start, "Direct")
 geoLift_plotly_att(geolifts$direct_traffic, data_start, test_start, "Direct")
 
-```
-
-\newpaage
-
-## Demographics
-
-```{r}
-
-demographic_traffic |> 
-  compare_demographics_ga(test_regions = test_regions, exclude_regions = exclude_regions) |> 
-  plotly::plot_ly(colors = as.character(itvPalette::itv_palette()[1:7])) |> 
-    plotly::add_trace(y = ~userAgeBracket, x = ~change, type = 'bar', orientation = 'h')
-
-```
-
-
-\newpaage
-
-## Appendix
-
-### Weights to form synthetic control
-
-```{r}
-gt::gt(geolifts$all_traffic$df_weights |> 
-         dplyr::mutate(weight = round(weight, 2)) |> 
-         dplyr::arrange(-weight)) |>
-  gtExtras::gt_theme_538()
 ```
