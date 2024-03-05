@@ -4,7 +4,7 @@
 \alias{regionalise_ga}
 \title{Regionalise a Google Analytics dataset with lat long columns}
 \usage{
-regionalise_ga(ga, test_region, control_region)
+regionalise_ga(ga, test_region, control_region, micro = FALSE)
 }
 \arguments{
 \item{control_region}{}
