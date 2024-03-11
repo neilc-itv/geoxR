@@ -13,6 +13,7 @@ Install dependencies first.
 # install.packages("remotes")
 remotes::install_github("ebenmichael/augsynth")
 remotes::install_github("facebookincubator/GeoLift")
+remotes::install_github("neilc-itv/itvPalette")
 remotes::install_github("itv/baRb")
 ```
 
