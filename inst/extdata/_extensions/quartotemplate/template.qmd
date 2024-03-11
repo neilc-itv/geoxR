@@ -39,7 +39,7 @@ options(scipen = 999)
 # Google Analytics 4 ID. Get this from the API or it's the number after web/#/p in the analytics.google.com URL
 ga_id <- 326644194
 
-# BARB API name for the advertiser. You can get all available names with baRb::barb_get_spots()
+# BARB API name for the advertiser. You can get all available names with baRb::barb_get_advertisers()
 barb_name <- c("WENTWORTH_WOODEN_JIG")
 
 # Title for the output report doc
