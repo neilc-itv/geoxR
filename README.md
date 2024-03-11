@@ -24,6 +24,16 @@ You can install the development version of geoxR from [GitHub](https://github.co
 remotes::install_github("neilc-itv/geoxR")
 ```
 
+You need to setup BARB API and Google Auth credentials if you haven't already done this.
+
+For BARB API credentials, see [baRb](https://github.com/ITV/baRb).
+
+For Google Auth, create new credentials or use existing OAuth desktop credentials from [Google Cloud Console](https://console.cloud.google.com/apis/credentials).
+
+Download the auth json and put it on your local machine *not* in your working directory, so that you won't accidentally push it to github. Then put the following line in your renviron: ```GAR_CLIENT_JSON=PATH_TO_YOUR_AUTH_FILE```
+
+Problems with auth'ing with Google are beyond the scope of this readme. Please see [googleAuthR](https://cran.r-project.org/web/packages/googleAuthR/index.html)
+
 ## Example
 
 geoxR reports are [Quarto](https://quarto.org/docs/computations/r.html) notebooks.

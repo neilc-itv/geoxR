@@ -148,19 +148,19 @@ all_traffic <- ga4_query(ga_id, data_start, data_end) |>
   write_rds("all_traffic.RDS")
 
 cpc_traffic <-
-  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga_filter_channel_group("Paid Search")) |>
   write_rds("cpc_traffic.RDS")
 
 organic_traffic <-
-  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Organic Search")) |>
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga_filter_channel_group("Organic Search")) |>
   write_rds("organic_traffic.RDS")
 
 paid_social_traffic <-
-  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Social")) |>
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga_filter_channel_group("Paid Social")) |>
   write_rds("paid_social_traffic.RDS")
 
 direct_traffic <-
-  ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Direct")) |>
+  ga4_query(ga_id, data_start, data_end, filter_clause = ga_filter_channel_group("Direct")) |>
   write_rds("direct_traffic.RDS")
 
 # ******************************************************************************
