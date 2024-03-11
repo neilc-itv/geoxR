@@ -34,7 +34,6 @@ library(tidyverse)
 library(baRb)
 library(googleAnalyticsR)
 library(googleCloudStorageR)
-devtools::load_all(".")
 options(scipen = 999)
 
 # Google Analytics 4 ID. Get this from the API or it's the number after web/#/p in the analytics.google.com URL
@@ -70,9 +69,9 @@ test_regions <- c("Meridian")
 exclude_regions <- c("Ulster", "Westcountry")
 
 # Calculated campaign carryover windows (do not amend - used for benchmarking)
-post_14 <- test_end + 14
-post_28 <- test_end + 28
-post_56 <- test_end + 56
+post_14 <- as.Date(test_end) + 14
+post_28 <- as.Date(test_end) + 28
+post_56 <- as.Date(test_end) + 56
 
 ```
 ## Report Setup
