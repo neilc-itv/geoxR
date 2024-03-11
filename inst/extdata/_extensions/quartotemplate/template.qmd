@@ -176,11 +176,12 @@ direct_traffic <- read_rds("direct_traffic.RDS")
 # Calculate geolifts for all sources. Add or remove sources from the list() to include or exclude from uplift calculations.
 # ******************************************************************************
 geolifts <- calculate_geoLifts(
-  list("all_traffic" = all_traffic,
+  list("all_traffic" = all_traffic
        # "cpc_traffic" = cpc_traffic,
-       "organic_traffic" = organic_traffic,
-       "paid_social_traffic" = paid_social_traffic,
-       "direct_traffic" = direct_traffic),
+       # "organic_traffic" = organic_traffic,
+       # "paid_social_traffic" = paid_social_traffic,
+       # "direct_traffic" = direct_traffic
+       ),
   test_regions = test_regions,
   exclude_regions = exclude_regions,
   test_start = test_start,

@@ -22,7 +22,7 @@ regionalise_ga <- function(ga, test_region, control_region, micro = FALSE){
     }
 
     results_regionalised <- ga |>
-      dplyr::left_join(dplyr::select(city_lookup, city, macro), by = "city") |>
+      dplyr::left_join(dplyr::select(city_lookup, city, region), by = "city") |>
       tidyr::drop_na() |>
       dplyr::select(-city) |>
       dplyr::group_by(across(c(-sessions))) |>
@@ -97,11 +97,11 @@ uplift_ga <- function(ga = NULL,
   }
 
   #Check region names for test and exclusion are valid
-  if(!any(test_regions) %in% ga$region){
+  if(!any(test_regions %in% traffic_regional$region)){
     stop('You have specified a test region that is not present in the data')
   }
 
-  if(!any(exclude_regions) %in% ga$region){
+  if(!any(exclude_regions %in% traffic_regional$region)){
     stop('You have an excluded region that is not present in the data')
   }
 
