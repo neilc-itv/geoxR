@@ -89,11 +89,9 @@ uplift_ga <- function(ga = NULL,
                       auto_regionalise = TRUE){
 
   if(auto_regionalise){
-    traffic_regional <- regionalise_ga(ga) |>
-      dplyr::filter(!region %in% exclude_regions)
+    traffic_regional <- regionalise_ga(ga)
   } else {
-    traffic_regional <- ga |>
-      dplyr::filter(!region %in% exclude_regions)
+    traffic_regional <- ga
   }
 
   #Check region names for test and exclusion are valid
@@ -102,8 +100,11 @@ uplift_ga <- function(ga = NULL,
   }
 
   if(!any(exclude_regions %in% traffic_regional$region)){
-    stop('You have an excluded region that is not present in the data')
+    stop('You have named an excluded region that is not present in the data')
   }
+
+  traffic_regional <- traffic_regional |>
+    dplyr::filter(!region %in% exclude_regions)
 
   test_start_n <- as.numeric(as.Date(test_start) - min(as.Date(ga$date))) + 1
   test_end_n <- as.numeric(as.Date(test_end) - min(as.Date(ga$date))) + 1
