@@ -7,6 +7,15 @@ Under the hood, geoxR uses meta's [GeoLift](https://facebookincubator.github.io/
 
 ## Installation
 
+Install dependencies first.
+
+``` r
+# install.packages("remotes")
+remotes::install_github("ebenmichael/augsynth")
+remotes::install_github("facebookincubator/GeoLift")
+remotes::install_github("itv/baRb")
+```
+
 You can install the development version of geoxR from [GitHub](https://github.com/) with:
 
 ``` r
