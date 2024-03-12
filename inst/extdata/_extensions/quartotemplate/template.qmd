@@ -139,7 +139,7 @@ spots |>
 # Get traffic data
 # ******************************************************************************
 # You can pull any sources of traffic that you need. Use a code block like this:
-# paid_search <- ga4_query(ga_id, data_start, data_end, filter_clause = ga4_filter_channel_group("Paid Search")) |>
+# paid_search <- ga4_query(ga_id, data_start, data_end, filter_clause = ga_filter_channel_group("Paid Search")) |>
 #   write_rds("paid_search.RDS")
 # 
 # Each block writes a file to the local cache so you can comment out the following lines for speed if you don't need to refresh data.

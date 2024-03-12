@@ -95,11 +95,11 @@ uplift_ga <- function(ga = NULL,
   }
 
   #Check region names for test and exclusion are valid
-  if(!any(test_regions %in% traffic_regional$region)){
+  if(!all(test_regions %in% traffic_regional$region)){
     stop('You have specified a test region that is not present in the data')
   }
 
-  if(!any(exclude_regions %in% traffic_regional$region)){
+  if(!all(exclude_regions %in% traffic_regional$region)){
     stop('You have named an excluded region that is not present in the data')
   }
 
