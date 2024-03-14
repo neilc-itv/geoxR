@@ -94,3 +94,32 @@ ga4_demographics <- function(ga_id = NULL,
     dplyr::rename_with(~ "sessions", all_of(metric)) |>
     dplyr::rename(demographic = !!demographic_selected)
 }
+
+#' Extract total traffic by channel group
+#'
+#' @param ga_id
+#' @param date_min
+#' @param date_max
+#' @param metric
+#'
+#' @return
+#' @export
+#'
+#' @examples
+ga4_summarise_sources <- function(ga_id = NULL,
+                                  date_min = NULL,
+                                  date_max = NULL,
+                                  metric = "sessions"){
+
+  ga <- googleAnalyticsR::ga_data(
+    ga_id,
+    metrics = metric,
+    dimensions = c("sessionDefaultChannelGroup"),
+    date_range = c(date_min, date_max),
+    limit = -1
+  ) |>
+    dplyr::rename_with(~ "sessions", all_of(metric)) |>
+    dplyr::arrange(sessions)
+
+  ga
+}
