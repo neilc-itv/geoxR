@@ -8,7 +8,7 @@
 #' @export
 #'
 #' @examples
-regionalise_ga <- function(ga, test_region, control_region, micro = FALSE){
+regionalise_ga <- function(ga, micro = FALSE){
 
   if(any(names(ga)=="city")){
     # Data is GA city names
@@ -86,10 +86,11 @@ uplift_ga <- function(ga = NULL,
                       benchmark_source = NA,
                       benchmark_comment = NA,
                       benchmark_schedule = NA,
-                      auto_regionalise = TRUE){
+                      auto_regionalise = TRUE,
+                      micro = FALSE){
 
   if(auto_regionalise){
-    traffic_regional <- regionalise_ga(ga)
+    traffic_regional <- regionalise_ga(ga, micro = micro)
   } else {
     traffic_regional <- ga
   }
@@ -193,7 +194,8 @@ calculate_geoLifts <- function(kpi_list = NULL,
                                test_end = NULL,
                                benchmark_advertiser = NA,
                                benchmark_comment = NA,
-                               benchmark_schedule = NA){
+                               benchmark_schedule = NA,
+                               micro = FALSE){
 
   geoLifts_out <- purrr::map(
     .x = kpi_list,
@@ -206,7 +208,8 @@ calculate_geoLifts <- function(kpi_list = NULL,
       benchmark_advertiser = benchmark_advertiser,
       benchmark_source = "source",
       benchmark_comment = benchmark_comment,
-      benchmark_schedule = benchmark_schedule
+      benchmark_schedule = benchmark_schedule,
+      micro = micro
     )
   )
 

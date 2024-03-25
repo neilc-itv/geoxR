@@ -40,26 +40,26 @@ options(scipen = 999)
 ga_id <- 326644194
 
 # BARB API name for the advertiser. You can get all available names with baRb::barb_get_advertisers()
-barb_name <- c("WENTWORTH_WOODEN_JIG")
+barb_name <- c("BARB_NAME_HERE")
 
 # Title for the output report doc
-report_title <- "Wentworth Puzzles"
+report_title <- "REPORT_TITLE_HERE"
 
 # ******************************************************************************
 # Test date parameters
 # ******************************************************************************
 
 # Start date should usually be 56 days before test start but may need to be flexed to get a better model fit
-data_start <- '2023-10-01'
+data_start <- '2023-01-01'
 
 # End date for data that will be extracted from the analytics API
-data_end <- '2024-01-06'
+data_end <- '2023-01-31'
 
 # First day of TV in the campaign
-test_start <- '2023-11-13'
+test_start <- '2023-01-15'
 
 # Last day of TV in the campaign
-test_end <- '2023-12-31'
+test_end <- '2023-01-31'
 
 # One or more region names where TV has been run
 test_regions <- c("Meridian")
@@ -67,6 +67,8 @@ test_regions <- c("Meridian")
 # Regions to exclude from the analysis.
 # Usually either because they cause model problems, or you're isolating one region's TV uplift and need to exclude other regions where TV ran.
 exclude_regions <- c("Ulster", "Westcountry")
+
+# To get a full list of regions run: unique(geoxR::macro_regions$ITV.Macro) or unique(geoxR::micro_regions$ITV_Micro)
 
 # Calculated campaign carryover windows (do not amend - used for benchmarking)
 post_14 <- as.Date(test_end) + 14
@@ -222,6 +224,15 @@ geolifts <- calculate_geoLifts(
 
 # Any file can be processed in this way. As long as it has `date`, `region` & `sessions` columns, geoxR can run it.
 
+
+```
+
+```{r}
+# Back up data and markdown files to Google Cloud Storage for benchmarking
+
+unique_project_name <- 'YOUR UNIQUE PROJECT NAME THAT DOES NOT EXIST IN https://console.cloud.google.com/storage/browser/itv_geox_data'
+
+backup_to_cloud(project_name =unique_project_name)
 
 ```
 

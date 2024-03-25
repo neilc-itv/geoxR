@@ -43,14 +43,10 @@ get_large_spots_ga4 <- function(spots, n = 10) {
 #' @export
 #'
 #' @examples
-calc_spike_scale_ga4 <- function(ga_hour, regions, large_spots) {
+calc_spike_scale_ga4 <- function(ga_minute, large_spots) {
 
-  # ----------------------------------------------------------------------------
-  # Calculates the size of the minute level spike and returns a scaling factor and a plot
-  # ----------------------------------------------------------------------------
-  results_hour_match_agg <- ga_hour |>
-    dplyr::filter(region %in% regions) |>
-    dplyr::group_by(date, hour, date_time) |>
+  results_hour_match_agg <- ga_minute |>
+    dplyr::group_by(date, hour, minute) |>
     dplyr::summarise(sessions = sum(sessions))
 
   responses <- large_spots |>
